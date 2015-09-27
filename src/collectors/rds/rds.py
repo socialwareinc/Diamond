@@ -10,7 +10,7 @@ You can specify an arbitrary amount of regions.
 
 ```
     enabled = true
-    # must be an interval of 60
+    # must be a multiple of 60
     interval = 60
 
     # Optional
@@ -154,7 +154,7 @@ class RdsCollector(diamond.collector.Collector):
 
     def get_default_config(self):
         """
-        Returns the default collector settings.
+        Return the default collector settings.
         """
         config = super(RdsCollector, self).get_default_config()
         config.update({
@@ -177,8 +177,11 @@ class RdsCollector(diamond.collector.Collector):
 
     def get_rds_identifiers(self, region, session):
         """
-        Gets all rds instance identifiers for a given region based on
-        configuration.
+        Get all rds instance identifiers for a given region based on
+        configuration
+        :param region: region to get rds instance identifiers for
+        :param session: boto3 session to use
+        :return: list of rds instance identifiers to collect metrics for
         """
         region_dict = self.config.get('regions', {}).get(region, {})
         region_rds_client = session.client('rds')
@@ -198,9 +201,13 @@ class RdsCollector(diamond.collector.Collector):
                 [instance['DBInstanceIdentifier'] for instance in response['DBInstances']]
         return rds_ids
 
-    def process_stat(self, region, rds_id, start_time, end_time, metric, stat):
+    def process_stat(self, region, rds_id, metric, stat):
         """
         Process a stat returned by cloudwatch.
+        :param region: current aws region
+        :param rds_id: current rds instance identifier
+        :param metric: current metric
+        :param stat: statistic returned by cloudwatch
         """
         template_tokens = {
             'region': region,
@@ -214,7 +221,7 @@ class RdsCollector(diamond.collector.Collector):
         path = self.get_metric_path(formatted_name, None)
         metric_to_publish = Metric(path, stat[metric.aws_type],
                                    raw_value=stat[metric.aws_type],
-                                   timestamp=time.mktime(utc_to_local(end_time).timetuple()),
+                                   timestamp=time.mktime(utc_to_local(stat['Timestamp']).timetuple()),
                                    precision=metric.precision, host=self.get_hostname(),
                                    metric_type=metric.diamond_type, ttl=ttl)
         self.publish_metric(metric_to_publish)
@@ -223,6 +230,12 @@ class RdsCollector(diamond.collector.Collector):
         """
         Process a given cloudwatch metric for a given rds instance. Note that
         this method only emits the most recent cloudwatch stat for the metric.
+        :param region: current aws region
+        :param region_cw_client: cloudwatch boto3 client for the region
+        :param rds_id: current rds instance identifier
+        :param start_time: cloudwatch query start time
+        :param end_time: cloudwatch query end time
+        :param metric: current metric
         """
         response = region_cw_client.get_metric_statistics(
             Namespace='AWS/RDS',
@@ -248,18 +261,26 @@ class RdsCollector(diamond.collector.Collector):
                 u'Unit': u'Count'
             })
         for stat in stats[-1:]:
-            self.process_stat(region, rds_id, start_time, end_time, metric, stat)
+            self.process_stat(region, rds_id, metric, stat)
 
     def process_instance(self, region, region_cw_client, rds_id, start_time, end_time):
         """
         Process a given rds instance by collecting all metrics.
+        :param region: current aws region
+        :param region_cw_client: cloudwatch boto3 client for the region
+        :param rds_id: current rds instance identifier
+        :param start_time: cloudwatch query start time
+        :param end_time: cloudwatch query end time
         """
         for metric in self.metrics:
             self.process_metric(region, region_cw_client, rds_id, start_time, end_time, metric)
 
     def process_region(self, region, start_time, end_time):
         """
-        Processes all rds instance identifiers in the given region.
+        Process all rds instance identifiers in the given region.
+        :param region: current aws region
+        :param start_time: cloudwatch query start time
+        :param end_time: cloudwatch query end time
         """
         session = Session(aws_access_key_id=self.config['access_key_id'],
                           aws_secret_access_key=self.config['secret_access_key'],
@@ -269,6 +290,9 @@ class RdsCollector(diamond.collector.Collector):
             self.process_instance(region, region_cw_client, rds_id, start_time, end_time)
 
     def collect(self):
+        """
+        Collect all metrics.
+        """
         if not self.check_boto():
             return
         now = datetime.datetime.utcnow()
