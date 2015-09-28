@@ -248,7 +248,7 @@ class RdsCollector(diamond.collector.Collector):
             ],
             StartTime=start_time,
             EndTime=end_time,
-            Period=self.config['interval'],
+            Period=int(self.config['interval']),
             Statistics=[metric.aws_type])
         stats = response['Datapoints']
         # create a fake stat if the current metric should default to zero when
