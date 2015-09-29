@@ -260,7 +260,7 @@ class RdsCollector(diamond.collector.Collector):
                 metric.aws_type: 0.0,
                 u'Unit': u'Count'
             })
-        for stat in stats[-1:]:
+        for stat in stats:
             self.process_stat(region, rds_id, metric, stat)
 
     def process_instance(self, region, region_cw_client, rds_id, start_time, end_time):
