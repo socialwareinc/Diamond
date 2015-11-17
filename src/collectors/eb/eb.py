@@ -128,7 +128,7 @@ class BeanstalkCollector(diamond.collector.Collector):
         """
         config = super(BeanstalkCollector, self).get_default_config()
         config.update({
-            'path': 'elasticbeanstalk',
+            'path': 'eb',
             'regions': ['us-east-1'],
             'interval': 60,
             'period': 300,
