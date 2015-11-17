@@ -79,7 +79,7 @@ class TestBeanstalkCollector(CollectorTestCase):
         region_eb_client = Mock()
         region_eb_client.describe_environments = Mock()
         region_eb_client.describe_environments.return_value = {
-            'EBEnvironments': [
+            'Environments': [
                 { 'EnvironmentName' : 'test1' },
                 { 'EnvironmentName' : 'test2' },
                 { 'EnvironmentName' : 'test3' },
@@ -107,7 +107,7 @@ class TestBeanstalkCollector(CollectorTestCase):
         region_eb_client = Mock()
         region_eb_client.describe_environments = Mock()
         region_eb_client.describe_environments.return_value = {
-            'EBEnvironments': [
+            'Environments': [
                 { 'EnvironmentName' : 'test1' },
                 { 'EnvironmentName' : 'test2' },
                 { 'EnvironmentName' : 'test3' },
