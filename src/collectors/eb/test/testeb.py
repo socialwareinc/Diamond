@@ -90,7 +90,7 @@ class TestBeanstalkCollector(CollectorTestCase):
         session.client = Mock()
         session.client.return_value = region_eb_client
         environment_names = collector.get_environment_names('us-east-1', session)
-        self.assertEqual(environment_names, ['test1','test2','test3','test4'])
+        self.assertEqual(environment_names, set(['test1','test2','test3','test4']))
 
     def test_get_environment_names_regex(self):
         config = get_collector_config(
@@ -119,7 +119,7 @@ class TestBeanstalkCollector(CollectorTestCase):
         session.client = Mock()
         session.client.return_value = region_eb_client
         environment_names = collector.get_environment_names('us-east-1', session)
-        self.assertEquals(environment_names, ['test1','zyx89'])
+        self.assertEquals(environment_names, set(['test1','zyx89']))
 
     @patch.object(Collector, 'publish_metric')
     def test_process_stat(self, publish_metric):

@@ -21,7 +21,8 @@ You can specify an arbitrary amount of regions.
 
     [[us-west-1]]
     # Optional - queries all environments if omitted, supports regex
-    environment_names = spw-qa1, lal-production-*
+    environment_names = spw-production
+    environment_cnames = lal-production-vpc.*, sps-production-vpc.*, voices-production.*
 
     [[us-west-2]]
     ...
@@ -155,20 +156,22 @@ class BeanstalkCollector(diamond.collector.Collector):
         region_dict = self.config.get('regions', {}).get(region, {})
         region_eb_client = session.client('elasticbeanstalk')
         response = region_eb_client.describe_environments()
-        if 'environment_names' in region_dict:
-            # Regular expressions EB environments we want to collect metrics on
-            matchers = \
+        if any(item in ['environment_cnames', 'environment_names'] for item in region_dict):
+            cname_matchers = \
+                [re.compile(regex) for regex in region_dict.get('environment_cnames', [])]
+            name_matchers = \
                 [re.compile(regex) for regex in region_dict.get('environment_names', [])]
-            full_environment_names = \
-                [environment['EnvironmentName'] for environment in response['Environments']]
-            environment_names = []
-            for environment_name in full_environment_names:
-                if matchers and any([m.match(environment_name) for m in matchers]):
-                    environment_names.append(environment_name)
+            environment_names = list()
+            for environment in response['Environments']:
+                if "CNAME" in environment:
+                    if cname_matchers and any([m.match(environment['CNAME']) for m in cname_matchers]):
+                        environment_names.append(environment['EnvironmentName'])
+                if name_matchers and any([m.match(environment['EnvironmentName']) for m in name_matchers]):
+                    environment_names.append(environment['EnvironmentName'])
         else:
             environment_names = \
                 [environment['EnvironmentName'] for environment in response['Environments']]
-        return environment_names
+        return set(environment_names)
 
     def process_stat(self, region, environment_name, metric, stat):
         """
