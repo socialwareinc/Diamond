@@ -71,7 +71,6 @@ class BeanstalkCollector(diamond.collector.Collector):
 
     # AWS metrics for Elastic Beanstalk
     metrics = [
-        MetricInfo('EnvironmentHealth', 'Average', 'GAUGE', 0, False),
         MetricInfo('InstancesSevere', 'Average', 'GAUGE', 0, False),
         MetricInfo('InstancesDegraded', 'Average', 'GAUGE', 0, False),
         MetricInfo('InstancesWarning', 'Average', 'GAUGE', 0, False),
@@ -80,19 +79,19 @@ class BeanstalkCollector(diamond.collector.Collector):
         MetricInfo('InstancesPending', 'Average', 'GAUGE', 0, False),
         MetricInfo('InstancesUnknown', 'Average', 'GAUGE', 0, False),
         MetricInfo('InstancesNoData', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationRequestsTotal', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationRequests5xx', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationRequests4xx', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationRequests3xx', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationRequests2xx', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP10', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP50', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP75', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP85', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP90', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP95', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP99', 'Average', 'GAUGE', 0, False),
-        MetricInfo('ApplicationLatencyP99.9', 'Average', 'GAUGE', 0, False)
+        MetricInfo('ApplicationRequestsTotal', 'Sum', 'GAUGE', 0, False),
+        MetricInfo('ApplicationRequests5xx', 'Sum', 'GAUGE', 0, False),
+        MetricInfo('ApplicationRequests4xx', 'Sum', 'GAUGE', 0, False),
+        MetricInfo('ApplicationRequests3xx', 'Sum', 'GAUGE', 0, False),
+        MetricInfo('ApplicationRequests2xx', 'Sum', 'GAUGE', 0, False),
+        MetricInfo('ApplicationLatencyP10', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP50', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP75', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP85', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP90', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP95', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP99', 'Average', 'GAUGE', 4, False),
+        MetricInfo('ApplicationLatencyP99.9', 'Average', 'GAUGE', 4, False)
     ]
 
     def process_config(self):
