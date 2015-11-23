@@ -141,11 +141,12 @@ class BeanstalkCollector(diamond.collector.Collector):
         config_help.update({
             'access_key_id': 'aws access key',
             'secret_access_key': 'aws secret key',
-            'environment_names': 'enter EB environment names seperated by comma'
+            'environment_cnames': 'EB environment CNAME regex seperated by comma'
+            'environment_names': 'EB environment name regex seperated by comma'
         })
         return config_help
 
-    def get_environment_names(self, region, session):
+    def get_environment_dicts(self, region, session):
         """
         Get all EB environment names for a given region based on
         configuration
@@ -156,34 +157,46 @@ class BeanstalkCollector(diamond.collector.Collector):
         region_dict = self.config.get('regions', {}).get(region, {})
         region_eb_client = session.client('elasticbeanstalk')
         response = region_eb_client.describe_environments()
-        if any(item in ['environment_cnames', 'environment_names'] for item in region_dict):
-            cname_matchers = \
-                [re.compile(regex) for regex in region_dict.get('environment_cnames', [])]
-            name_matchers = \
-                [re.compile(regex) for regex in region_dict.get('environment_names', [])]
-            environment_names = list()
-            for environment in response['Environments']:
-                if "CNAME" in environment:
-                    if cname_matchers and any([m.match(environment['CNAME']) for m in cname_matchers]):
-                        environment_names.append(environment['EnvironmentName'])
-                if name_matchers and any([m.match(environment['EnvironmentName']) for m in name_matchers]):
-                    environment_names.append(environment['EnvironmentName'])
-        else:
-            environment_names = \
-                [environment['EnvironmentName'] for environment in response['Environments']]
-        return set(environment_names)
 
-    def process_stat(self, region, environment_name, metric, stat):
+        cname_matchers = list()
+        name_matchers = list()
+        environment_dicts =list()
+
+        cname_matchers = [
+            re.compile(regex) for regex
+            in region_dict.get('environment_cnames', [])
+        ]
+        name_matchers = [
+            re.compile(regex) for regex
+            in region_dict.get('environment_names', [])
+        ]
+
+        for environment in response['Environments']:
+            if (
+                not (cname_matchers or name_matchers) or
+                (
+                    any([m.match(environment.get("CNAME", "") for m in cname_matchers])) or
+                    any([m.match(environment['EnvironmentName']) for m in name_matchers])
+                )
+            ):
+                environment_dict = dict.fromkeys(['environment_name', 'lineage_name'], environment['EnvironmentName'])
+                if "CNAME" in environment:
+                    environment_dict['lineage_name'] = re.sub("elasticbeanstalk.com", "", environment['CNAME'])
+                environment_dicts.append(environment_dict)
+
+        return environment_dicts
+
+    def process_stat(self, region, environment_dict, metric, stat):
         """
         Process a stat returned by cloudwatch.
         :param region: current aws region
-        :param environment_name: current EB environment name
+        :param environment_dict: A dictionary with both the environment name and the name to use for the metric
         :param metric: current metric
         :param stat: statistic returned by cloudwatch
         """
         template_tokens = {
             'region': region,
-            'environment_name': environment_name,
+            'environment_name': environment_dict['lineage_name'],
             'metric_name': metric.name,
         }
         ttl = float(self.config['interval']) * float(
@@ -198,13 +211,13 @@ class BeanstalkCollector(diamond.collector.Collector):
                                    metric_type=metric.diamond_type, ttl=ttl)
         self.publish_metric(metric_to_publish)
 
-    def process_metric(self, region, region_cw_client, environment_name, start_time, end_time, metric):
+    def process_metric(self, region, region_cw_client, environment_dict, start_time, end_time, metric):
         """
         Process a given cloudwatch metric for a given EB Environment. Note that
         this method only emits the most recent cloudwatch stat for the metric.
         :param region: current aws region
         :param region_cw_client: cloudwatch boto3 client for the region
-        :param environment_name: current EB environment name
+        :param environment_dict: A dictionary with both the environment name and the name to use for the metric
         :param start_time: cloudwatch query start time
         :param end_time: cloudwatch query end time
         :param metric: current metric
@@ -215,7 +228,7 @@ class BeanstalkCollector(diamond.collector.Collector):
             Dimensions=[
                 {
                     'Name': 'EnvironmentName',
-                    'Value': environment_name
+                    'Value': environment_dict['environment_name']
                 }
             ],
             StartTime=start_time,
@@ -233,19 +246,19 @@ class BeanstalkCollector(diamond.collector.Collector):
                 u'Unit': u'Count'
             })
         for stat in stats:
-            self.process_stat(region, environment_name, metric, stat)
+            self.process_stat(region, environment_dict, metric, stat)
 
-    def process_environment(self, region, region_cw_client, environment_name, start_time, end_time):
+    def process_environment(self, region, region_cw_client, environment_dict, start_time, end_time):
         """
         Process a given EB environment by collecting all metrics.
         :param region: current aws region
         :param region_cw_client: cloudwatch boto3 client for the region
-        :param environment_name: current EB environment name
+        :param environment_dict: A dictionary with both the environment name and the name to use for the metric
         :param start_time: cloudwatch query start time
         :param end_time: cloudwatch query end time
         """
         for metric in self.metrics:
-            self.process_metric(region, region_cw_client, environment_name, start_time, end_time, metric)
+            self.process_metric(region, region_cw_client, environment_dict, start_time, end_time, metric)
 
     def process_region(self, region, start_time, end_time):
         """
@@ -258,8 +271,8 @@ class BeanstalkCollector(diamond.collector.Collector):
                           aws_secret_access_key=self.config['secret_access_key'],
                           region_name=region)
         region_cw_client = session.client('cloudwatch')
-        for environment_name in self.get_environment_names(region, session):
-            self.process_environment(region, region_cw_client, environment_name, start_time, end_time)
+        for environment_dict in self.get_environment_dicts(region, session):
+            self.process_environment(region, region_cw_client, environment_dict, start_time, end_time)
 
     def collect(self):
         """
