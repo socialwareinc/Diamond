@@ -141,7 +141,7 @@ class BeanstalkCollector(diamond.collector.Collector):
         config_help.update({
             'access_key_id': 'aws access key',
             'secret_access_key': 'aws secret key',
-            'environment_cnames': 'EB environment CNAME regex seperated by comma'
+            'environment_cnames': 'EB environment CNAME regex seperated by comma',
             'environment_names': 'EB environment name regex seperated by comma'
         })
         return config_help
@@ -175,7 +175,7 @@ class BeanstalkCollector(diamond.collector.Collector):
             if (
                 not (cname_matchers or name_matchers) or
                 (
-                    any([m.match(environment.get("CNAME", "") for m in cname_matchers])) or
+                    any([m.match(environment.get("CNAME", "")) for m in cname_matchers]) or
                     any([m.match(environment['EnvironmentName']) for m in name_matchers])
                 )
             ):
