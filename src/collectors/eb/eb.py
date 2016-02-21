@@ -181,7 +181,9 @@ class BeanstalkCollector(diamond.collector.Collector):
             ):
                 environment_dict = dict.fromkeys(['environment_name', 'lineage_name'], environment['EnvironmentName'])
                 if "CNAME" in environment:
-                    environment_dict['lineage_name'] = re.sub("elasticbeanstalk.com", "", environment['CNAME'])
+                    lineage_name = re.sub(".%s" % region, "", environment['CNAME'])
+                    lineage_name = re.sub(".elasticbeanstalk.com", "", lineage_name)
+                    environment_dict['lineage_name'] = lineage_name
                 environment_dicts.append(environment_dict)
 
         return environment_dicts
